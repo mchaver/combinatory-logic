@@ -7,6 +7,8 @@ function cons(car, cdr) {
   this.cdr = cdr;
 }
 
+// count the cars from the current position to help determine how many function 
+// arguments are available
 function leftDepth(tree) {
   if (Object.prototype.toString.call(tree) === '[object Object]' && tree.hasOwnProperty('car')) {
     return (1 + leftDepth(tree.car));
@@ -22,28 +24,45 @@ function reduce(tree) {
 }
 
 function fold(split) {
-  if (split == null) return (new cons (null, null));
-  if (split.length == 0) return (new cons (null, null));
-  var token = split.pop();
-  if (token == "") return (new cons (null, null));
-  if (token == "(") return (new cons (null, split));
-  var next = fold(split);
-  if (token == ")") {
-    if (next.car == null) return (new cons (null, split));
-    var nextnext = fold(next.cdr);
-    if (nextnext.car == null) return (new cons (next.car, nextnext.cdr));
-    return (new cons ((new cons (nextnext.car, next.car)),
-                      nextnext.cdr))
+  var result;
+  
+  if (split == null) {
+    result = new cons (null, null);
+  } else if (split.length == 0) {
+    result = new cons (null, null);
+  } else {
+    var token = split.pop();
+    
+    if (token == "") {
+      result = new cons (null, null);
+    } else if (token == "(") {
+      result = new cons (null, split);
+    } else {
+      var next = fold(split);
+      if (token == ")") {
+        if (next.car == null) {
+          result = new cons (null, split);
+        } else {        
+          var nextnext = fold(next.cdr);
+          if (nextnext.car == null) {
+            result = new cons (next.car, nextnext.cdr);
+          } else {
+            result = new cons ((new cons (nextnext.car, next.car)), nextnext.cdr);
+          }
+        }
+      } else if (next.car == null) { 
+        result = new cons (token, next.cdr); // build right side with next
+      } else {
+        result = new cons ((new cons (next.car, token)), next.cdr);
+      }
+    }
   }
-  if (next.car == null) return (new cons (token, next.cdr)); // build right side with next
-  return (new cons ((new cons (next.car, token)),
-                    next.cdr))
+  return result;
 }
 
 function fixedPoint (tree) {
   var t2 = reduce(tree);
   if (treeToString(tree) == treeToString(t2)) return (tree);
-  console.log(t2);
   return (fixedPoint (t2));
 }
 
@@ -78,14 +97,16 @@ function treeToString(tree) {
 function treeToStringRaw(tree) {
   if (tree == null) return ("@")
   if (typeof(tree) == "string") return (tree);
-  return ("("+treeToStringRaw(tree.car) + treeToStringRaw(tree.cdr) + ")")
+  return ("(" + treeToStringRaw(tree.car) + treeToStringRaw(tree.cdr) + ")")
 }
 
 function stringToTree(input) {
   input = input.replace(/[ \f\n\r\t\v]/g,""); // remove white space
   input = input.replace(/(.)/g, " $1"); // prepend space before everything
-  console.log(input);
   return ((fold(input.split(/ /))).car); // make array by splitting on space
 }
 
 console.log(eval('III(SK)K(Ki)'));
+console.log(eval('Ki'));
+console.log(eval('Kab'));
+console.log(eval('SKKb'));
