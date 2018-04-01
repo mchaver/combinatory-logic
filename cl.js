@@ -1,3 +1,4 @@
+var previous_trees = [];
 
 // build a LISP style list
 function cons(car, cdr) { 
@@ -33,15 +34,49 @@ function reduce(tree) {
   var result;
 
   if (tree == null)
-    return (tree);
+    return tree;
   
   if (tree.hasOwnProperty('value'))
-    return (tree);
+    return tree;
   
   if (tree == 'string')
-    return (tree);
+    return tree;
   
   return (convert (new cons (reduce (tree.car), reduce (tree.cdr))));
+}
+
+
+// apply primitive functions if all its required variables exist. This is part 
+// of the reduction step.
+function convert(tree) {
+  var d = leftDepth(tree);
+  
+  // I X ==> X
+  if ((leftDepth(tree) == 1) && (tree.car.value == "I")) {
+    result = tree.cdr;
+    previous_trees.push("I => " + treeToStringRaw(result));
+    return result;
+    //return tree.cdr;
+  }
+
+  // K X Y ==> X
+  if ((leftDepth(tree) == 2) && (tree.car.car.value == "K")) {
+    result = tree.car.cdr;
+    previous_trees.push("K => " + treeToStringRaw(result));
+    return result;
+    //return tree.car.cdr;
+  }
+
+  // S X Y Z ==> ((X Z)(Y Z))
+  if ((leftDepth(tree) == 3) && (tree.car.car.car.value == "S")) {
+    result = (new cons ((new cons (tree.car.car.cdr, tree.cdr)),
+                      (new cons (tree.car.cdr, tree.cdr))));
+    previous_trees.push("S => " + treeToStringRaw(result));
+    return result;
+    //return (new cons ((new cons (tree.car.car.cdr, tree.cdr)),
+    //                  (new cons (tree.car.cdr, tree.cdr))));
+  }
+  return tree;
 }
 
 // make type and variable pair
@@ -98,8 +133,8 @@ function fold(split) {
 
 // reduce try until it is no longer reducible
 function fixedPoint (tree) {
-  console.log('::fixedPoint::reduced\n');
-  console.log(treeToStringRaw(tree));
+  // console.log('::fixedPoint::reduced\n');
+  // console.log(treeToStringRaw(tree));
 
   var t2 = reduce(tree);
   
@@ -109,28 +144,6 @@ function fixedPoint (tree) {
   } else {
     return (fixedPoint (t2));    
   }
-}
-
-// apply primitive functions if all its required variables exist. This is part 
-// of the reduction step.
-function convert(tree) {
-  var d = leftDepth(tree);
-  
-  // I X ==> X
-  if ((leftDepth(tree) == 1) && (tree.car.value == "I"))
-    return (tree.cdr);
-
-  // K X Y ==> X
-  if ((leftDepth(tree) == 2) && (tree.car.car.value == "K")) {
-    return (tree.car.cdr);
-  }
-
-  // S X Y Z ==> ((X Z)(Y Z))
-  if ((leftDepth(tree) == 3) && (tree.car.car.car.value == "S"))
-    return (new cons ((new cons (tree.car.car.cdr, tree.cdr)),
-                      (new cons (tree.car.cdr, tree.cdr))));
-
-  return(tree); 
 }
 
 // convert the tree structure to a string, this makes it easier to compare two 
@@ -176,11 +189,133 @@ function stringToTree(input) {
 }
 
 function eval(input) {
-  return treeToStringRaw(fixedPoint(stringToTree(input)));
+  var result = treeToStringRaw(fixedPoint(stringToTree(input)));
+  // console.log(previous_trees);
+  return result;
 }
 
 //console.log(eval('III(SK)K(Ki)'));
-//console.log(eval('Ki'));
-//console.log(eval('Kab'));
+console.log(eval('Ki'));
+console.log(eval('Kab'));
 console.log(eval('SKK(SKK(SKK))b'));
 //console.log(eval('K(Ki)K'));
+// assert(eval('SKK(SKK(SKK))b') === 'b');
+// assert(eval('Kab') === 'a');
+// assert(eval('SKISKI') === '((SK)I)');
+// assert(eval('S(KI)(SK)I') === '((SK)I)');
+console.log(eval('S(K(I(S(KI))))'));
+console.log(eval('SK'));
+console.log(eval('K(Kab)(Kab)'));
+// assert(eval('S(K(I(S(KI))))') === 'S(K(I(S(KI))))');
+console.log(stringToTree('S(K(I(S(KI))))'));
+console.log(stringToTree('S(KI)(SK)I'));
+
+/*
+
+   
+  /\
+ /\ S
+/\ I
+I I
+*/
+
+/*
+Ix = x
+Kxy = x
+Sxyz = xz(yz) 
+
+SKSK = KK(SK) = K
+
+
+   SKSK
+
+     S
+    / \
+   K  /\
+     S  K
+
+     K
+    / \
+   K   S
+      / \
+     K
+
+     K
+
+
+       S
+      / \
+     K  /\
+       K  S
+         / \
+        K  /\
+           K
+
+
+
+   /\
+  /\ K
+ /\ S
+S  K
+
+
+
+  
+ / \
+/\  /\
+K K S K
+
+K
+
+ISK ((IS)K)
+
+    / \
+  / \  K
+ I   S
+
+     I
+    /
+   S
+  /
+ K
+
+I(SK) (I(SK))
+
+   /\
+  I /\
+   S  K
+
+SKISKI (((((SK)I)S)K)I)
+
+S(KI)(SK)I  ((S((KI)(SK))I))
+
+S(K(I(S(KI))))  (S(K(I(S(KI)))))
+
+
+
+
+ /\
+I  x  ->   x
+
+  /\
+ /\ y  -> x
+K  x
+                .
+               / \
+              /   \
+   /\        /\   /\
+  /\ z ->   x  z  y z
+ /\ y
+S x
+
+http://people.cs.uchicago.edu/~odonnell/Teacher/Lectures/Formal_Organization_of_Knowledge/Examples/combinator_calculus/
+  
+
+  1
+ / \
+ 2  3
+/ \ \ 
+4 5  6
+
+
+*/
