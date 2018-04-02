@@ -28,7 +28,7 @@ var cc = (function() {
     if (tree === null || typeof(tree) === "string" || !isNode(tree)) {
       return 0;
     } else {
-      return 1 + leftDepth(tree.right);
+      return 1 + rightDepth(tree.right);
     }
   }
 
@@ -74,7 +74,6 @@ K = (ι(ι(ιι)))
 
 S = (ι(ι(ι(ιι))))
 */
-    
     var d = leftDepth(tree);
 
     // I x ==> x
@@ -85,8 +84,8 @@ S = (ι(ι(ι(ιι))))
 
     // K x y ==> x
     // ι(ι(ιι)) x y ==> x
-    //  (rightDepth(tree.left.left) == 2)
     if ((leftDepth(tree) === 3) &&
+        (rightDepth(tree.left.left) === 3) &&
         (tree.left.left.left === "ι") &&
         (tree.left.left.right.left === "ι") &&
         (tree.left.left.right.right.left === "ι") &&
@@ -94,23 +93,16 @@ S = (ι(ι(ι(ιι))))
       return tree.left.right;
     }
 
-    /*
-
-ski.stringToTree('ι(ι(ιι))xy')
-node {
-  left: node { left: node { left: 'ι', right: [Object] }, right: 'x' },
-  right: 'y' }
-> ski.stringToTree(
-
-ski.stringToTree('ι(ι(ιι))')
-node {
-  left: 'ι',
-  right: node { left: 'ι', right: node { left: 'ι', right: 'ι' } } }
-*/
-
     // S x y z ==> ((x z)(y z))
     // ι(ι(ι(ιι))) x y z ==> ((x z)(y z))
-    if ((leftDepth(tree) === 3) && (tree.left.left.left === "S")) {
+    
+    if ((leftDepth(tree) === 4) &&
+        (rightDepth(tree.left.left.left) === 4) &&
+        (tree.left.left.left.left === "ι") &&
+        (tree.left.left.left.right.left === "ι") &&
+        (tree.left.left.left.right.right.left === "ι") &&
+        (tree.left.left.left.right.right.right.left === "ι") &&
+        (tree.left.left.left.right.right.right.right === "ι")) {
       return (new node ((new node (tree.left.left.right, tree.right)),
                         (new node (tree.left.right, tree.right))));
     }
@@ -300,6 +292,98 @@ node {
 
   assert (iota('ιιx') === 'x');
   assert (iota('ι(ι(ιι))xy') === 'x');
+  assert (iota('ι(ι(ι(ιι)))xyz') === '((xz)(yz))');
+
+  function widthAux(tree, parent) {
+    var parent = parent | 0;
+    if (tree === null || typeof(tree) === "string" || !isNode(tree)) {
+      return [];
+    } else {
+      var left = parent - 1;
+      var right = parent + 1;
+      return [left,right].concat(widthAux(tree.left,left),widthAux(tree.right,right));
+    }  
+  }
+
+  function width(tree) {
+    var result = widthAux(tree);
+    return {left: Math.min.apply(null, result), right: Math.max.apply(null, result)};
+  }
+
+  function prettyPrintTreeAux(nodes, left, right, depth) {
+    var line = "";
+    var nextNodes = [];
+    for (var i = 0; i < nodes.length; i++) {
+      if (typeof(nodes[i]) === "string") {
+        line += nodes[i];
+      } else if (isNode(nodes[i])) {
+        line += '/\\';
+        nextNodes.append([nodes[i].left, nodes[i].right]);
+      }
+    }
+    line += "\n";
+
+    if (nextNodes.length > 0) {
+      line += prettyPrintTreeAux(nextNodes,,depth+1);
+    } else {
+      return line;
+    }
+  }
+
+  function prettyPrintTree(tree) {
+    var w = width(tree);
+    return prettyPrintTreeAux([tree], w.left, w.right, 0);
+  }
+
+  assert (compareObjs(width(stringToTree('SKI')), {left: -2, right: 1}));
+  assert (compareObjs(width(stringToTree('ι(ι(ι(ιι)))xyz')), {left: -4, right: 1}));
+/*
+if left print one less, iff right print one more
+ι(ι(ι(ιι)))xyz
+-4 and 1
+67
+568 left is node, right is string
+47
+    /\
+   /\ z
+  /\ x
+ /\ y
+ι /\
+ ι /\
+  ι /\
+   ι  ι
+
+       /\
+      /  \
+     /\   \
+    /  \   z
+   /\   x
+  /  \
+ /\   y
+ι  \
+   /\
+  /  \
+ ι   /\
+    /  \
+   ι   /\
+      ι  ι
+
+Sabc
+    /\
+   /  \
+  /    \
+ /\    /\
+a  c  b  c
+
+SKI
+  /\     
+ /\ I
+S  K
+
+Ix
+ /\
+I  x
+*/
   
   return {
     ski: ski,
@@ -308,7 +392,11 @@ node {
 
     bckw: bckw,
 
-    stringToTree: stringToTree
+    stringToTree: stringToTree,
+
+    // utils
+    leftDepth: leftDepth,
+    rightDepth: rightDepth
   };
 })();
 
