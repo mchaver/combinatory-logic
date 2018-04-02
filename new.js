@@ -24,6 +24,14 @@ var cc = (function() {
     }  
   }
 
+  function rightDepth(tree) {
+    if (tree === null || typeof(tree) === "string" || !isNode(tree)) {
+      return 0;
+    } else {
+      return 1 + leftDepth(tree.right);
+    }
+  }
+
   function leftReduce(f, tree) {
     if (tree === null || tree === 'string' || !isNode(tree)) {
       return tree;
@@ -49,6 +57,59 @@ var cc = (function() {
     }
 
     // S x y z ==> ((x z)(y z))
+    if ((leftDepth(tree) === 3) && (tree.left.left.left === "S")) {
+      return (new node ((new node (tree.left.left.right, tree.right)),
+                        (new node (tree.left.right, tree.right))));
+    }
+    
+    return tree;
+  }
+
+  function evalIota(tree) {
+
+    /*
+I = (ιι)
+
+K = (ι(ι(ιι)))
+
+S = (ι(ι(ι(ιι))))
+*/
+    
+    var d = leftDepth(tree);
+
+    // I x ==> x
+    // ι ι x ==> x
+    if ((leftDepth(tree) === 2) && (tree.left.left === "ι") && (tree.left.right === "ι")) {
+      return tree.right;
+    }
+
+    // K x y ==> x
+    // ι(ι(ιι)) x y ==> x
+    //  (rightDepth(tree.left.left) == 2)
+    if ((leftDepth(tree) === 3) &&
+        (tree.left.left.left === "ι") &&
+        (tree.left.left.right.left === "ι") &&
+        (tree.left.left.right.right.left === "ι") &&
+        (tree.left.left.right.right.right === "ι")) {
+      return tree.left.right;
+    }
+
+    /*
+
+ski.stringToTree('ι(ι(ιι))xy')
+node {
+  left: node { left: node { left: 'ι', right: [Object] }, right: 'x' },
+  right: 'y' }
+> ski.stringToTree(
+
+ski.stringToTree('ι(ι(ιι))')
+node {
+  left: 'ι',
+  right: node { left: 'ι', right: node { left: 'ι', right: 'ι' } } }
+*/
+
+    // S x y z ==> ((x z)(y z))
+    // ι(ι(ι(ιι))) x y z ==> ((x z)(y z))
     if ((leftDepth(tree) === 3) && (tree.left.left.left === "S")) {
       return (new node ((new node (tree.left.left.right, tree.right)),
                         (new node (tree.left.right, tree.right))));
@@ -225,14 +286,29 @@ var cc = (function() {
     return treeToStringRaw(fix(curry(leftReduce, evalSKI), stringToTree(input)));
   }
 
+  function iota(input) {
+    return treeToStringRaw(fix(curry(leftReduce, evalIota), stringToTree(input)));
+  }
+
+  function bckw(input) {
+    return treeToStringRaw(fix(curry(leftReduce, evalBCKW), stringToTree(input))); 
+  }
+
   assert (ski('I') === 'I');
   assert (ski('Kab') === 'a');
   assert (ski('SKISKI') === '((SK)I)');
+
+  assert (iota('ιιx') === 'x');
+  assert (iota('ι(ι(ιι))xy') === 'x');
   
   return {
-    ski: function(input) {
-      return treeToStringRaw(fix(curry(leftReduce, evalSKI), stringToTree(input)));
-    }
+    ski: ski,
+
+    iota: iota,
+
+    bckw: bckw,
+
+    stringToTree: stringToTree
   };
 })();
 
@@ -284,6 +360,16 @@ Y = \\f.(\\x. f( x x)) (\\x. f (x x))
 
 /*
 iota combinator
+
+I = (ιι)
+
+K = (ι(ι(ιι)))
+
+S = (ι(ι(ι(ιι))))
+
+
+SKI=
+(ι(ι(ι(ιι)))(ι(ι(ιι)))(ιι)ι(ι(ι(ιι)))(ι(ι(ιι)))(ιι))
 
 ιι = ιSK = SSKK = SK(KK) = I
 
