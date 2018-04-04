@@ -68,7 +68,8 @@ var cc = (function() {
   function evalIota(tree) {
 
     /*
-I = (ιι)
+ι = λf.fSK 
+I = (ιι) = (λf.fSK (λf.fSK))
 
 K = (ι(ι(ιι)))
 
@@ -264,6 +265,16 @@ S = (ι(ι(ι(ιι))))
     }
   }
 
+  function fixWithSteps(f,x,ys) {
+    var y = f(x);
+    if (compareObjs(x,y)) {
+      return ys;
+    } else {
+      ys.push(y);
+      return fixWithSteps(f,y,ys);
+    }
+  }
+
   function curry(fn) {
     var slice = Array.prototype.slice,
         stored_args = slice.call(arguments, 1);
@@ -278,6 +289,14 @@ S = (ι(ι(ι(ιι))))
     return treeToStringRaw(fix(curry(leftReduce, evalSKI), stringToTree(input)));
   }
 
+  function skiWithSteps(input) {
+    var steps = fixWithSteps(curry(leftReduce, evalSKI), stringToTree(input), [stringToTree(input)]);
+    for (var i = 0; i < steps.length; i++) {
+      steps[i] = treeToStringRaw(steps[i]);
+    }
+    return steps;
+  }
+  
   function iota(input) {
     return treeToStringRaw(fix(curry(leftReduce, evalIota), stringToTree(input)));
   }
@@ -310,34 +329,16 @@ S = (ι(ι(ι(ιι))))
     return {left: Math.min.apply(null, result), right: Math.max.apply(null, result)};
   }
 
-  function prettyPrintTreeAux(nodes, left, right, depth) {
-    var line = "";
-    var nextNodes = [];
-    for (var i = 0; i < nodes.length; i++) {
-      if (typeof(nodes[i]) === "string") {
-        line += nodes[i];
-      } else if (isNode(nodes[i])) {
-        line += '/\\';
-        nextNodes.append([nodes[i].left, nodes[i].right]);
-      }
-    }
-    line += "\n";
-
-    if (nextNodes.length > 0) {
-      line += prettyPrintTreeAux(nextNodes,,depth+1);
-    } else {
-      return line;
-    }
-  }
-
-  function prettyPrintTree(tree) {
-    var w = width(tree);
-    return prettyPrintTreeAux([tree], w.left, w.right, 0);
-  }
-
   assert (compareObjs(width(stringToTree('SKI')), {left: -2, right: 1}));
   assert (compareObjs(width(stringToTree('ι(ι(ι(ιι)))xyz')), {left: -4, right: 1}));
 /*
+K ≡ λx y.x
+S ≡ λx y z.x z(y z)
+λx y.y x = S(K(SI))(S(KK)I)
+
+undecidable
+(S I I (S I I))
+
 if left print one less, iff right print one more
 ι(ι(ι(ιι)))xyz
 -4 and 1
@@ -387,6 +388,8 @@ I  x
   
   return {
     ski: ski,
+
+    skiWithSteps: skiWithSteps,
 
     iota: iota,
 
