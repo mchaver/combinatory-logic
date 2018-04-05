@@ -117,7 +117,7 @@ function tokenValue(token, type, input, index) {
     return token.value;
   }
 
-  return match(token, type, input, index);
+  return {value: token.value, next: match(token, type, input, index)};
   // return token.value;
 }
 
@@ -186,19 +186,12 @@ function parse() {
 //        | application
 function term(token, input, index, ctx) {
   var result = skip(token, Token.LAMBDA, input, index);
-  console.log(result);
-  console.log('term');
+
   if (result.result) {
-    console.log('id');
     var id = tokenValue(result.token, Token.LCID, input, result.index);
-    console.log(id);
-    console.log(input[id.index]);
-    // var nt = tokenValue(id.token, Token.DOT, input, index);
-    var nt = match(id.token, Token.DOT, input, id.index);
-    console.log('matched');
-    var newTerm = term(nt.token, input, nt.index, [id.token.value].concat(ctx));
-    // var newTerm = term(id.token, input, id.index + 1, [id.token.value].concat(ctx));
-    return new Abstraction(id, newTerm);
+    var nt = match(id.next.token, Token.DOT, input, id.next.index);
+    var newTerm = term(nt.token, input, nt.index, [id.value].concat(ctx));
+    return {state: {token: newTerm.state.token, index: newTerm.state.index}, ast: new Abstraction(id.value, newTerm.ast)};
     
   } else {
     return application(result.token, input, result.index, ctx);
@@ -210,15 +203,21 @@ function term(token, input, index, ctx) {
 function application(token, input, index, ctx) {
   var lhs = atom(token, input, index, ctx);
   console.log(lhs);
+  token = lhs.state.token;
+  index = lhs.state.index;
+  lhs = lhs.ast;
   // application' ::= atom application'
   //                | ε
   while (true) {
-    var rhs = atom(lhs.token, input, lhs.index, ctx);
+    var rhs = atom(token,input,index,ctx);
+    
     if (!rhs) {
-      return lhs;
+      return {state: {token: token, index: index}, ast: lhs};
     } else {
-      lhs = new Application(lhs, rhs);
+      lhs = new Application(lhs, rhs.ast);
     }
+    token = rhs.state.token;
+    index = rhs.state.index;
   }
 }
 
@@ -226,24 +225,23 @@ function application(token, input, index, ctx) {
 //        | LCID
 function atom(token, input, index, ctx) {
   var result = skip(token, Token.LPAREN, input, index);
-  console.log(result);
-  console.log('atom');
+
   if (result.result) {
     var newTerm = term(result.token, input, result.index, ctx);
-    console.log(newTerm);
-    var _rparen = match(newTerm.token, Token.RPAREN, input, newTerm.index);
-    return newTerm;
+    var rparen = match(newTerm.state.token, Token.RPAREN, input, newTerm.state.index);
+    return {state: {token: rparen.token, index: rparen.index}, ast: newTerm.ast};
     
   } else if (next(token, Token.LCID)) {
     var id = tokenValue(token, Token.LCID, input, index);
     var idIndex = -1;
     for (var i = 0; i < ctx.length; i++) {
-      if (ctx[i] == id) {
+      if (ctx[i] == id.value) {
         idIndex = i;
         break;
       }
     }
-    return new Identifier(idIndex);
+    
+    return {state: {token: id.next.token, index: id.next.index}, ast: new Identifier(idIndex)};
 
   } else {
     return undefined;
